@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Runtime output
+*.log
+log.txt
+bans.json
+artifacts/
+
+# Local secrets and machine-specific configuration
+.env
+.env.*
+local-server.json
+proxy.txt
+
+# Native build output
+vendor/RakClient/target/
+*.pcap
+
+# Keep release binaries only when deliberately packaged
+vendor/openmp/Server/log.txt
+vendor/openmp/Server/bans.json
+vendor/openmp/Server/*.dmp
