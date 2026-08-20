@@ -240,7 +240,57 @@ vendor/openmp/Server
 
 ---
 
+## Hubungkan ke MCP client
+
+Program ini memakai transport `stdio`, jadi MCP client menjalankan executable sebagai subprocess. Contoh konfigurasi generik:
+
+```json
+{
+  "mcpServers": {
+    "mcponmysamp": {
+      "command": "D:/Folderku/mcp-gta-samp/.venv/Scripts/mcp-gta-samp.exe",
+      "args": [
+        "--config", "D:/Folderku/mcp-gta-samp/local-server.json",
+        "--client-executable", "D:/Folderku/mcp-gta-samp/vendor/rakclient-bin/rakclient.exe",
+        "--client-arg", "--server",
+        "--client-arg", "127.0.0.1:7777",
+        "--client-arg", "--nick",
+        "--client-arg", "MCPBot",
+        "--client-arg", "--scripts-dir",
+        "--client-arg", "D:/Folderku/mcp-gta-samp/vendor/rakclient-bin/scripts",
+        "--gamemode-source", "D:/Folderku/mcp-gta-samp/vendor/openmp/Server/gamemodes/mcp_test.pwn"
+      ]
+    }
+  }
+}
+```
+
+Sesuaikan semua path dengan folder project kamu. Jangan memakai path `D:/Folderku/...` jika project berada di lokasi lain.
+
+## Vendor dan file besar
+
+Clone baru mendapat file yang dilacak Git. Binary testing minimal tersedia di `vendor/`. ZIP, PDB, build source RakClient, dan binary tambahan sengaja tidak diwajibkan untuk instalasi dasar.
+
+Jika binary minimal tidak ada, download atau build dependency secara manual, lalu arahkan `local-server.json` dan argument RakClient ke lokasi sebenarnya. Jangan commit credential, log, ZIP besar, atau dump build.
+
 ## Troubleshooting cepat
+
+### Proses masih hidup setelah error
+
+MCP mencoba menghentikan server dan client saat proses utama keluar. Jika proses tetap tertinggal, hentikan `omp-server.exe` dan `rakclient.exe` dari Task Manager, lalu pastikan port UDP `7777` kosong sebelum test ulang.
+
+### Test gagal karena `pydantic_core._pydantic_core`
+
+Buat ulang virtual environment project, jangan memakai environment global yang rusak:
+
+```bat
+rmdir /s /q .venv
+py -3 -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install ".[dev]"
+pytest -q
+```
 
 ### `mcp-gta-samp is not recognized`
 
@@ -259,24 +309,19 @@ python -m mcp_gta_samp.cli --config local-server.json
 
 ### `FileNotFoundError` / executable tidak ditemukan
 
-Cek tiga hal:
-
-- command dijalankan dari root `mcponmysamp`;
-- `executable` di `local-server.json` benar;
-- file `.exe` memang ada.
+Cek command dijalankan dari root `mcponmysamp`, path `executable` benar, dan file `.exe` memang ada.
 
 ### Client tidak mencapai `Spawned`
 
-Cek:
-
-- open.mp sudah `server_start` dan ready;
-- port UDP `7777` tidak dipakai proses lain;
-- alamat client `127.0.0.1:7777` benar;
-- `rakclient.exe` dan folder `scripts` ada.
+Cek open.mp sudah ready, port UDP `7777` tidak dipakai proses lain, alamat `127.0.0.1:7777` benar, serta `rakclient.exe` dan folder `scripts` ada.
 
 ### Test berhenti di tengah
 
 Ambil history client, hentikan proses, lalu pastikan port `7777` kembali kosong. Jangan menganggap server berhasil hanya karena prosesnya masih hidup.
+
+## Catatan contributor
+
+Perubahan runtime harus punya unit test. Live test memakai binary lokal dan tidak dijalankan di CI. Jalankan `pytest -q` sebelum commit.
 
 ---
 

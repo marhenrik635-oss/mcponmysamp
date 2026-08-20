@@ -37,7 +37,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.client_executable:
         client = HeadlessClient(str(args.client_executable), args.client_arg)
     app = create_mcp_server(server, client=client, gamemode_source=args.gamemode_source)
-    app.run("stdio")
+    try:
+        app.run("stdio")
+    finally:
+        if client is not None:
+            client.stop()
+        server.stop()
     return 0
 
 

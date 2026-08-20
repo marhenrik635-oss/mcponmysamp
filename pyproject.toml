@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 dependencies = ["mcp>=1.28,<2"]
 
 [project.urls]
-Repository = "https://github.com/marhenrik635-oss/mcp-gta-samp"
+Repository = "https://github.com/marhenrik635-oss/mcponmysamp"
 License = "https://opensource.org/license/mit"
 
 [project.readme]

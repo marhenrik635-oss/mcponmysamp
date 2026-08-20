@@ -24,6 +24,8 @@ proxy.txt
 # Native build output
 vendor/RakClient/target/
 *.pcap
+*.zip
+*.pdb
 
 # Keep release binaries only when deliberately packaged
 vendor/openmp/Server/log.txt
