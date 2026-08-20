@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-GAMEMODE = Path(__file__).parents[1] / "vendor/openmp/Server/gamemodes/mcp_test.pwn"
+GAMEMODE = Path(__file__).parents[1] / "examples/mcp_test.pwn"
 
 
 def test_mcp_test_gamemode_exposes_help_command():
@@ -11,6 +11,8 @@ def test_mcp_test_gamemode_exposes_help_command():
     assert '"/status"' in source
 
 
-def test_local_server_uses_mcp_test_gamemode():
-    config = (GAMEMODE.parent.parent / "config.json").read_text(encoding="utf-8")
-    assert '"mcp_test 1"' in config
+def test_mcp_test_gamemode_routes_chat_commands():
+    source = GAMEMODE.read_text(encoding="utf-8")
+    assert "handle_mcp_command" in source
+    assert "public OnPlayerText" in source
+    assert "public OnPlayerCommandText" in source

@@ -1,104 +1,96 @@
 # MCP on My SAMP
 
-<p align="center">
-  <strong>AI-native testing bridge untuk open.mp / SA-MP</strong><br>
-  Jalankan server lokal, kendalikan client headless, lalu buktikan response game melalui MCP.
-</p>
+AI-native testing bridge untuk server open.mp / SA-MP lokal.
 
-<p align="center">
-  <a href="https://github.com/marhenrik635-oss/mcponmysamp/actions"><img src="https://img.shields.io/github/actions/workflow/status/marhenrik635-oss/mcponmysamp/ci.yml?style=for-the-badge&label=CI" alt="CI"></a>
-  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/MCP-stdio-7C3AED?style=for-the-badge" alt="MCP stdio">
-  <img src="https://img.shields.io/badge/open.mp%20%2F%20SA--MP-local%20testing-00A86B?style=for-the-badge" alt="Local testing only">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-F59E0B?style=for-the-badge" alt="MIT License"></a>
-</p>
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-stdio-7C3AED?style=for-the-badge) ![License](https://img.shields.io/badge/license-MIT-F59E0B?style=for-the-badge)
 
-> **Fokus:** testing server lokal atau server yang kamu miliki / izinkan. Bukan tool untuk mengotomatisasi public server.
+> Gunakan hanya untuk server lokal atau server yang kamu miliki / izinkan. Bukan tool public-server automation.
 
----
+## Fitur
 
-## Mulai dari nol — Windows
+- Lifecycle open.mp: start, status, stop.
+- Lifecycle headless RakClient: start, status, stop.
+- Spawn-gated command dispatch.
+- Command allowlist dari source Pawn.
+- Client history dan response assertion.
+- Evidence-based command round-trip.
 
-> Jalankan semua command dari **Command Prompt** atau **PowerShell**.
+Tidak menyediakan flood, spam, lag injection, arbitrary RCON, atau automation server publik.
 
-### 1. Download project
+## Alur kerja
 
-`git clone` hanya menyalin source code dari GitHub ke komputer. Tidak langsung menjalankan server.
+```text
+AI agent
+  │ MCP stdio
+  ▼
+MCP on My SAMP ──► open.mp server
+        │              ▲
+        └── RakClient ─┘ UDP lokal
+```
+
+Bukti valid:
+
+```text
+command dikirim
+→ server callback menerima command
+→ gamemode mengirim response
+→ client menerima response
+→ MCP assertion berhasil
+```
+
+## Instalasi Windows
+
+Jalankan dari root repository yang baru di-clone:
 
 ```bat
 git clone https://github.com/marhenrik635-oss/mcponmysamp.git
 cd mcponmysamp
-```
-
-### 2. Buat lingkungan Python
-
-```bat
 py -3 -m venv .venv
 .venv\Scripts\activate
-```
-
-Jika berhasil, biasanya nama `(.venv)` muncul di awal baris terminal.
-
-### 3. Install dependency
-
-```bat
 python -m pip install --upgrade pip
 python -m pip install ".[dev]"
+pytest -q
 ```
 
-### 4. Buat konfigurasi lokal
+Linux / macOS:
+
+```bash
+git clone https://github.com/marhenrik635-oss/mcponmysamp.git
+cd mcponmysamp
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install ".[dev]"
+pytest -q
+```
+
+## Dependency game
+
+Binary open.mp, RakClient, dan Pawn compiler **tidak disimpan di Git repository** agar clone tetap kecil dan tidak mendistribusikan binary pihak ketiga.
+
+Siapkan dependency tersebut sendiri. Struktur lokal bebas; contoh:
+
+```text
+D:/Games/open.mp/omp-server.exe
+D:/Games/RakClient/rakclient.exe
+D:/Games/RakClient/scripts/
+```
+
+## Konfigurasi
+
+Salin template:
 
 ```bat
 copy config.example.json local-server.json
 ```
 
-`local-server.json` sengaja tidak masuk Git karena path server setiap komputer berbeda.
+Linux / macOS:
 
-### 5. Jalankan test Python
-
-```bat
-pytest -q
+```bash
+cp config.example.json local-server.json
 ```
 
-Jika test selesai tanpa error, lanjut ke live test.
-
----
-
-## Struktur folder
-
-```text
-mcponmysamp/
-├─ mcp_gta_samp/                  source MCP server
-├─ tests/                         unit dan contract tests
-├─ vendor/openmp/Server/          binary + konfigurasi open.mp
-│  └─ gamemodes/mcp_test.pwn      gamemode untuk pengujian
-├─ vendor/rakclient-bin/          headless RakClient
-│  └─ scripts/                    script client
-├─ config.example.json            template konfigurasi
-└─ local-server.json              konfigurasi lokal, buat sendiri
-```
-
-Repository sudah menyertakan binary testing di `vendor/`. Kalau kamu mengganti lokasi server, cukup ubah `local-server.json`.
-
----
-
-## Konfigurasi server
-
-Buka `local-server.json`. Default-nya:
-
-```json
-{
-  "executable": "vendor/openmp/Server/omp-server.exe",
-  "working_dir": "vendor/openmp/Server",
-  "args": ["--config-path", "config.json"],
-  "ready_text": "Legacy Network started on port",
-  "startup_timeout": 30
-}
-```
-
-Path relatif dihitung dari **root project**, yaitu folder `mcponmysamp`.
-
-Jika open.mp berada di tempat lain, gunakan path sesuai komputer:
+Edit `local-server.json`:
 
 ```json
 {
@@ -110,222 +102,120 @@ Jika open.mp berada di tempat lain, gunakan path sesuai komputer:
 }
 ```
 
----
+`local-server.json` sengaja di-ignore Git. Gunakan path sesuai komputer sendiri.
 
 ## Menjalankan MCP
 
-### Server MCP + open.mp saja
+Server saja:
 
 ```bat
 mcp-gta-samp --config local-server.json
 ```
 
-### Server MCP + open.mp + headless RakClient
-
-Gunakan command multiline berikut di **Command Prompt**:
+Dengan headless RakClient:
 
 ```bat
 mcp-gta-samp ^
   --config local-server.json ^
-  --client-executable vendor/rakclient-bin/rakclient.exe ^
+  --client-executable D:/Games/RakClient/rakclient.exe ^
   --client-arg --server ^
   --client-arg 127.0.0.1:7777 ^
   --client-arg --nick ^
   --client-arg MCPBot ^
   --client-arg --scripts-dir ^
-  --client-arg vendor/rakclient-bin/scripts ^
-  --gamemode-source vendor/openmp/Server/gamemodes/mcp_test.pwn
+  --client-arg D:/Games/RakClient/scripts ^
+  --gamemode-source examples/mcp_test.pwn
 ```
 
-Untuk **PowerShell**, gunakan satu baris agar tidak salah escaping:
-
-```powershell
-mcp-gta-samp --config local-server.json --client-executable vendor/rakclient-bin/rakclient.exe --client-arg --server --client-arg 127.0.0.1:7777 --client-arg --nick --client-arg MCPBot --client-arg --scripts-dir --client-arg vendor/rakclient-bin/scripts --gamemode-source vendor/openmp/Server/gamemodes/mcp_test.pwn
-```
-
-MCP menggunakan transport **stdio**. Terminal akan terlihat diam karena proses menunggu MCP client mengirim request. Itu normal.
-
----
-
-## Workflow pengujian
-
-Panggil MCP tools dalam urutan ini:
-
-```text
-1. server_status
-2. server_start
-3. client_start
-4. tunggu client mencapai Spawned
-5. server_list_commands
-6. server_assert_command("/help")
-7. client_send_chat("/help")
-8. client_assert_output("MCP Test Commands:")
-9. client_get_history jika perlu diagnosis
-10. client_stop
-11. server_stop
-```
-
-`Spawned` hanya membuktikan client berhasil masuk game. Bukti command yang valid harus melewati seluruh round-trip:
-
-```text
-command dikirim
-  → server menerima callback
-  → gamemode mengirim response
-  → client menerima response
-  → MCP assertion berhasil
-```
-
----
+Untuk PowerShell, gunakan satu baris. MCP menggunakan transport `stdio`; terminal yang diam berarti proses sedang menunggu request dari MCP client.
 
 ## MCP tools
 
 | Tool | Fungsi |
 |---|---|
-| `server_start` | Menyalakan open.mp dan menunggu readiness. |
-| `server_status` | Mengecek status server dan PID. |
-| `server_stop` | Menghentikan server. |
-| `client_start` | Menyalakan headless RakClient. |
-| `client_status` | Mengecek status client. |
-| `client_stop` | Menghentikan client. |
-| `client_send_chat` | Mengirim command slash yang diizinkan setelah `Spawned`. |
-| `client_get_history` | Membaca output client yang dibuffer. |
-| `client_assert_output` | Memastikan response tertentu diterima client. |
-| `server_list_commands` | Menemukan command dari source Pawn. |
-| `server_assert_command` | Memvalidasi command terhadap allowlist. |
+| `server_start` | Start server dan tunggu readiness. |
+| `server_status` | Cek server dan PID. |
+| `server_stop` | Stop server. |
+| `client_start` | Start headless RakClient. |
+| `client_status` | Cek status client. |
+| `client_stop` | Stop client. |
+| `client_send_chat` | Kirim command slash allowlisted setelah `Spawned`. |
+| `client_get_history` | Ambil output client. |
+| `client_assert_output` | Pastikan response diterima client. |
+| `server_list_commands` | Daftar command dari source Pawn. |
+| `server_assert_command` | Validasi command terhadap allowlist. |
 
-`server_list_commands` dan `server_assert_command` aktif jika `--gamemode-source` diberikan.
-
----
-
-## Live test bawaan
-
-Gamemode test:
+## Workflow AI agent
 
 ```text
-vendor/openmp/Server/gamemodes/mcp_test.pwn
+1. server_status
+2. server_start jika belum berjalan
+3. client_start
+4. tunggu Spawned
+5. server_list_commands
+6. server_assert_command("/help")
+7. client_send_chat("/help")
+8. client_assert_output("MCP Test Commands:")
+9. client_get_history bila perlu diagnosis
+10. client_stop
+11. server_stop
 ```
 
-Command yang tersedia:
+Jangan menganggap boot, join, atau `Spawned` sebagai bukti command berhasil. Jika gagal, klasifikasikan boundary: boot, koneksi, spawn, queue, outbound packet, callback server, response server, parser client, atau assertion MCP.
+
+## Fixture gamemode
+
+Source minimal ada di:
+
+```text
+examples/mcp_test.pwn
+```
+
+Command:
 
 ```text
 /help
 /status
 ```
 
-Contoh assertion:
-
-```text
-client_send_chat("/help")
-client_assert_output("MCP Test Commands:")
-client_assert_output("/status - show a test response")
-```
-
-Headless RakClient membuktikan protocol, state, command, dan response. Ia **tidak menghasilkan screenshot**. Testing visual membutuhkan GTA client dengan renderer terpisah.
-
----
-
-## Jika gamemode Pawn diubah
-
-Compile ulang dari folder server menggunakan Pawn compiler:
+Fixture ini perlu dimasukkan ke folder `gamemodes` pada instalasi open.mp lalu di-compile menggunakan Pawn compiler. Dari folder instalasi open.mp:
 
 ```bat
-qawno\pawncc.exe -i.\qawno\include -o.\gamemodes\mcp_test .\gamemodes\mcp_test.pwn
+qawno\pawncc.exe -i.\qawno\include -o.\gamemodes\mcp_test examples\mcp_test.pwn
 ```
 
-Jalankan command tersebut dari:
+Pastikan `config.json` open.mp memuat gamemode:
 
-```text
-vendor/openmp/Server
+```json
+"main_scripts": ["mcp_test 1"]
 ```
 
----
+## Contoh MCP client
 
-## Hubungkan ke MCP client
-
-Program ini memakai transport `stdio`, jadi MCP client menjalankan executable sebagai subprocess. Contoh konfigurasi generik:
+MCP client menjalankan executable sebagai subprocess melalui stdio. Sesuaikan semua path:
 
 ```json
 {
   "mcpServers": {
     "mcponmysamp": {
-      "command": "D:/Folderku/mcp-gta-samp/.venv/Scripts/mcp-gta-samp.exe",
+      "command": "D:/path/mcponmysamp/.venv/Scripts/mcp-gta-samp.exe",
       "args": [
-        "--config", "D:/Folderku/mcp-gta-samp/local-server.json",
-        "--client-executable", "D:/Folderku/mcp-gta-samp/vendor/rakclient-bin/rakclient.exe",
+        "--config", "D:/path/mcponmysamp/local-server.json",
+        "--client-executable", "D:/Games/RakClient/rakclient.exe",
         "--client-arg", "--server",
         "--client-arg", "127.0.0.1:7777",
         "--client-arg", "--nick",
         "--client-arg", "MCPBot",
         "--client-arg", "--scripts-dir",
-        "--client-arg", "D:/Folderku/mcp-gta-samp/vendor/rakclient-bin/scripts",
-        "--gamemode-source", "D:/Folderku/mcp-gta-samp/vendor/openmp/Server/gamemodes/mcp_test.pwn"
+        "--client-arg", "D:/Games/RakClient/scripts",
+        "--gamemode-source", "D:/path/mcponmysamp/examples/mcp_test.pwn"
       ]
     }
   }
 }
 ```
 
-Sesuaikan semua path dengan folder project kamu. Jangan memakai path `D:/Folderku/...` jika project berada di lokasi lain.
-
-## Vendor dan file besar
-
-Clone baru mendapat file yang dilacak Git. Binary testing minimal tersedia di `vendor/`. ZIP, PDB, build source RakClient, dan binary tambahan sengaja tidak diwajibkan untuk instalasi dasar.
-
-Jika binary minimal tidak ada, download atau build dependency secara manual, lalu arahkan `local-server.json` dan argument RakClient ke lokasi sebenarnya. Jangan commit credential, log, ZIP besar, atau dump build.
-
-## Troubleshooting cepat
-
-### Proses masih hidup setelah error
-
-MCP mencoba menghentikan server dan client saat proses utama keluar. Jika proses tetap tertinggal, hentikan `omp-server.exe` dan `rakclient.exe` dari Task Manager, lalu pastikan port UDP `7777` kosong sebelum test ulang.
-
-### Test gagal karena `pydantic_core._pydantic_core`
-
-Buat ulang virtual environment project, jangan memakai environment global yang rusak:
-
-```bat
-rmdir /s /q .venv
-py -3 -m venv .venv
-.venv\Scripts\activate
-python -m pip install --upgrade pip
-python -m pip install ".[dev]"
-pytest -q
-```
-
-### `mcp-gta-samp is not recognized`
-
-Virtual environment belum aktif, atau package belum ter-install:
-
-```bat
-.venv\Scripts\activate
-python -m pip install ".[dev]"
-```
-
-Alternatif tanpa command global:
-
-```bat
-python -m mcp_gta_samp.cli --config local-server.json
-```
-
-### `FileNotFoundError` / executable tidak ditemukan
-
-Cek command dijalankan dari root `mcponmysamp`, path `executable` benar, dan file `.exe` memang ada.
-
-### Client tidak mencapai `Spawned`
-
-Cek open.mp sudah ready, port UDP `7777` tidak dipakai proses lain, alamat `127.0.0.1:7777` benar, serta `rakclient.exe` dan folder `scripts` ada.
-
-### Test berhenti di tengah
-
-Ambil history client, hentikan proses, lalu pastikan port `7777` kembali kosong. Jangan menganggap server berhasil hanya karena prosesnya masih hidup.
-
-## Catatan contributor
-
-Perubahan runtime harus punya unit test. Live test memakai binary lokal dan tidak dijalankan di CI. Jalankan `pytest -q` sebelum commit.
-
----
-
-## Pengembangan
+## Testing dan build
 
 ```bat
 .venv\Scripts\activate
@@ -333,31 +223,27 @@ pytest -q
 python -m pip wheel . --no-deps -w dist
 ```
 
-Project tidak membutuhkan database, credential, proxy pool, atau koneksi public server.
+Target minimal: seluruh test Python lulus. Live test membutuhkan dependency game lokal dan tidak dijalankan di CI.
 
----
+## Struktur repository
 
-## Batasan keamanan
+```text
+mcp_gta_samp/       package MCP Python
+tests/              unit dan contract tests
+examples/           fixture Pawn kecil
+config.example.json template konfigurasi
+README.md           dokumentasi
+LICENSE             MIT License
+```
 
-Gunakan hanya pada server lokal atau server yang kamu miliki / izinkan. Project ini tidak menyediakan:
+## Keamanan dan batasan
 
-- flood atau spam;
-- lag injection;
-- arbitrary RCON;
-- automation public server;
-- API game-control terbuka ke internet.
-
-Jangan commit credential, proxy, log privat, atau konfigurasi server sensitif.
-
----
+Gunakan hanya pada server lokal atau server yang kamu miliki / izinkan. Jangan commit credential, proxy, log privat, konfigurasi sensitif, atau binary game besar. Headless RakClient membuktikan protocol, state, command, dan response; bukan screenshot atau gameplay visual.
 
 ## Lisensi
 
 MIT License. Lihat [LICENSE](LICENSE).
 
-<p align="center">
-  <strong>Testable. Local. Verifiable.</strong><br>
-  Dibuat untuk testing open.mp / SA-MP yang dapat dibuktikan.
-</p>
-
 [Repository](https://github.com/marhenrik635-oss/mcponmysamp) · [Issues](https://github.com/marhenrik635-oss/mcponmysamp/issues)
+
+<p align="center"><strong>Testable. Local. Verifiable.</strong></p>

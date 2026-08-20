@@ -15,19 +15,17 @@ log.txt
 bans.json
 artifacts/
 
-# Local secrets and machine-specific configuration
+# Local configuration and secrets
 .env
 .env.*
 local-server.json
 proxy.txt
 
-# Native build output
-vendor/RakClient/target/
-*.pcap
+# Optional local game dependencies
+vendor/
 *.zip
 *.pdb
+*.pcap
 
-# Keep release binaries only when deliberately packaged
-vendor/openmp/Server/log.txt
-vendor/openmp/Server/bans.json
-vendor/openmp/Server/*.dmp
+# Native build output
+*.dmp
