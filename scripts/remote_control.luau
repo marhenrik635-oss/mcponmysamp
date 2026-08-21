@@ -16,11 +16,23 @@
 --        animation|id|flags  set_velocity|x|y|z  get_money  get_nick
 --        get_interior  get_server_addr  spawn  reconnect|ms  get_weapon
 --        get_camera  get_keys  dialog|id|button|listItem|input
+--        vehicle_drive|accel|brake|steer  vehicle_horn  vehicle_health
+--        vehicle_position  vehicle_velocity|x|y|z  vehicle_speed
+--        get_dialog  wait_dialog|timeout  wait_message|marker|timeout
 -- mode: walk|jog (default)|sprint, prefix "direct " for a straight-line seek.
 
 local QUEUE_KEY = "rcq"
 local RESP_KEY = "rcr"
 local KEY_JUMP = 32 -- SA-MP on-foot keyset: 32 = jump (4 is fire, 8 sprint, 1024 walk)
+
+-- Vehicle keyset (SA-MP incar keys): 1=fire, 4=accelerate, 8=brake, 16=left, 32=right, 64=horn.
+local VKEY_FIRE, VKEY_ACCEL, VKEY_BRAKE = 1, 4, 8
+local VKEY_LEFT, VKEY_RIGHT, VKEY_HORN = 16, 32, 64
+
+-- Shared state polled by MCP via the command queue.
+local vehicle_state = { health = 0, speed = 0.0, x = 0.0, y = 0.0, z = 0.0, keys = 0 }
+local dialog_state = { active = false, id = 0, style = 0, title = "", button1 = "", button2 = "", text = "" }
+local last_message = ""
 
 local tick = 0
 
@@ -158,7 +170,65 @@ local function execute(id: string, kind: string, args: { string })
     elseif kind == "dialog" then
         local did, btn, item, inp = tonumber(args[1]) or 0, tonumber(args[2]) or 0, tonumber(args[3]) or 0, args[4] or ""
         sampSendDialogResponse(did, btn, item, inp)
+        dialog_state.active = false
         respond(id, { "ok" })
+    elseif kind == "vehicle_drive" then
+        -- accel(0/1) brake(0/1) steer(-1/0/1). Combines into the incar keyset.
+        local accel, brake, steer = tonumber(args[1]) or 0, tonumber(args[2]) or 0, tonumber(args[3]) or 0
+        local keys = 0
+        if accel ~= 0 then keys += VKEY_ACCEL end
+        if brake ~= 0 then keys += VKEY_BRAKE end
+        if steer < 0 then keys += VKEY_LEFT elseif steer > 0 then keys += VKEY_RIGHT end
+        setBotKeys(keys)
+        updateSync()
+        respond(id, { "ok" })
+    elseif kind == "vehicle_horn" then
+        setBotKeys(VKEY_HORN)
+        updateSync()
+        setBotKeys(0)
+        updateSync()
+        respond(id, { "ok" })
+    elseif kind == "vehicle_health" then
+        respond(id, { "ok", tostring(vehicle_state.health) })
+    elseif kind == "vehicle_position" then
+        respond(id, { "ok", tostring(vehicle_state.x), tostring(vehicle_state.y), tostring(vehicle_state.z) })
+    elseif kind == "vehicle_velocity" then
+        setBotVelocity(tonumber(args[1]), tonumber(args[2]), tonumber(args[3]))
+        updateSync()
+        respond(id, { "ok" })
+    elseif kind == "vehicle_speed" then
+        respond(id, { "ok", tostring(vehicle_state.speed) })
+    elseif kind == "get_dialog" then
+        if not dialog_state.active then
+            respond(id, { "ok", "none" })
+        else
+            respond(id, { "ok", tostring(dialog_state.id), tostring(dialog_state.style), dialog_state.title, dialog_state.button1, dialog_state.button2, dialog_state.text })
+        end
+    elseif kind == "wait_dialog" then
+        local timeout = tonumber(args[1]) or 5.0
+        local deadline = (os.clock() * 1000) + timeout * 1000
+        while (os.clock() * 1000) < deadline do
+            if dialog_state.active then
+                respond(id, { "ok", tostring(dialog_state.id), tostring(dialog_state.style), dialog_state.title, dialog_state.button1, dialog_state.button2, dialog_state.text })
+                return
+            end
+            wait(50)
+        end
+        respond(id, { "err", "no dialog within " .. tostring(timeout) .. "s" })
+    elseif kind == "wait_message" then
+        local marker = args[1] or ""
+        local timeout = tonumber(args[2]) or 5.0
+        local deadline = (os.clock() * 1000) + timeout * 1000
+        while (os.clock() * 1000) < deadline do
+            if last_message ~= "" and (marker == "" or last_message:find(marker, 1, true) ~= nil) then
+                local m = last_message
+                last_message = ""
+                respond(id, { "ok", m })
+                return
+            end
+            wait(50)
+        end
+        respond(id, { "err", "no message within " .. tostring(timeout) .. "s" })
     else
         respond(id, { "err", "unknown command: " .. kind })
     end
@@ -189,4 +259,52 @@ registerHandler("onUpdate", function()
         args[i - 2] = parts[i]
     end
     execute(id, kind, args)
+end)
+
+-- Incoming vehicle sync → track health/position/speed for MCP reads.
+-- PACKET_VEHICLE_SYNC (200): playerId u16, vehicleId u16, leftRight u16, upDown u16, keys u16,
+-- quaternion (4 bools + 3x u16), position 3x f32, moveSpeed 3x compressed f32, vehicleHealth u16, ...
+registerHandler("onReceivePacket", function(id, bs)
+    if id ~= 200 then -- PACKET_VEHICLE_SYNC
+        return
+    end
+    bs:ignoreBits(8) -- packet id
+    bs:readUInt16() -- playerId
+    bs:readUInt16() -- vehicleId
+    bs:readUInt16() -- leftRightKeys
+    bs:readUInt16() -- upDownKeys
+    local keys = bs:readUInt16()
+    bs:readBool() bs:readBool() bs:readBool() bs:readBool() -- quat signs
+    bs:readUInt16() bs:readUInt16() bs:readUInt16() -- quat xyz
+    vehicle_state.x, vehicle_state.y, vehicle_state.z = bs:readFloat(), bs:readFloat(), bs:readFloat()
+    local spdx = bs:readUInt16() / 32767.5 - 1
+    local spdy = bs:readUInt16() / 32767.5 - 1
+    local spdz = bs:readUInt16() / 32767.5 - 1
+    vehicle_state.speed = math.sqrt(spdx * spdx + spdy * spdy + spdz * spdz)
+    vehicle_state.health = bs:readUInt16()
+    vehicle_state.keys = keys
+end)
+
+-- Incoming SHOWDIALOG (RPC 61) → record the dialog for MCP.
+-- Wire format: dialogId u16, style u8, title string8, button1 string8, button2 string8, text encodedString4096.
+registerHandler("onReceiveRPC", function(id, bs)
+    if id == 61 then -- RPC_SCRSHOWDIALOG
+        bs:ignoreBits(8)
+        dialog_state.id = bs:readUInt16()
+        dialog_state.style = bs:readUInt8()
+        dialog_state.title = bs:readString(bs:readUInt8())
+        dialog_state.button1 = bs:readString(bs:readUInt8())
+        dialog_state.button2 = bs:readString(bs:readUInt8())
+        dialog_state.text = bs:readEncoded(4096)
+        dialog_state.active = true
+    end
+end)
+
+-- Incoming server message (RPC 93) → capture for wait_message.
+registerHandler("onReceiveRPC", function(id, bs)
+    if id == 93 then -- RPC_SCRCLIENTMESSAGE
+        bs:ignoreBits(8)
+        bs:readInt32() -- color
+        last_message = bs:readString(bs:readUInt8())
+    end
 end)

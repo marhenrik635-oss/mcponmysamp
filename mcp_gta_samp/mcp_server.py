@@ -355,6 +355,74 @@ def create_mcp_server(
             remote.dialog(dialog_id, button, list_item, input_text)
             return {"ok": True}
 
+        @app.tool(
+            description="Hold vehicle keys: accel (bool), brake (bool), steer (-1=left, 0=straight, 1=right). Release with bot_key_release.",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_vehicle_drive(accel: bool, brake: bool = False, steer: int = 0) -> dict[str, bool]:
+            remote.vehicle_drive(accel, brake, steer)
+            return {"ok": True}
+
+        @app.tool(
+            description="Pulse the vehicle horn.",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        )
+        def bot_vehicle_horn() -> dict[str, bool]:
+            remote.vehicle_horn()
+            return {"ok": True}
+
+        @app.tool(
+            description="Get current vehicle health (1000 = perfect, 0 = destroyed).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_vehicle_health() -> dict[str, float]:
+            return {"health": remote.vehicle_health()}
+
+        @app.tool(
+            description="Get current vehicle world position.",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_vehicle_position() -> dict[str, float]:
+            x, y, z = remote.vehicle_position()
+            return {"x": x, "y": y, "z": z}
+
+        @app.tool(
+            description="Set vehicle velocity vector (x, y, z).",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_vehicle_velocity(x: float, y: float, z: float) -> dict[str, bool]:
+            remote.vehicle_velocity(x, y, z)
+            return {"ok": True}
+
+        @app.tool(
+            description="Get current vehicle speed (units/s, magnitude of move speed).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_vehicle_speed() -> dict[str, float]:
+            return {"speed": remote.vehicle_speed()}
+
+        @app.tool(
+            description="Read the currently active server dialog (id, style, title, buttons, text), or none.",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_get_dialog() -> dict[str, object]:
+            dlg = remote.get_dialog()
+            return {"dialog": dlg}
+
+        @app.tool(
+            description="Block until a server dialog appears; return its content. Raises on timeout.",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_wait_for_dialog(timeout: float = 5.0) -> dict[str, object]:
+            return {"dialog": remote.wait_dialog(timeout)}
+
+        @app.tool(
+            description="Block until a server message arrives (optionally containing marker). Returns the message.",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_wait_for_message(marker: str = "", timeout: float = 5.0) -> dict[str, str]:
+            return {"message": remote.wait_message(marker, timeout)}
+
     return app
 
 

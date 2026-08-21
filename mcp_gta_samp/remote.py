@@ -221,6 +221,64 @@ class RemoteControl:
         """Respond to a server dialog (button 1=left, 0=right)."""
         self.command("dialog", [dialog_id, button, list_item, input_text])
 
+    def vehicle_drive(self, accel: bool, brake: bool = False, steer: int = 0) -> None:
+        """Hold vehicle keys: accel, brake, steer (-1=left, 0=straight, 1=right)."""
+        self.command("vehicle_drive", [1 if accel else 0, 1 if brake else 0, steer])
+
+    def vehicle_horn(self) -> None:
+        """Pulse the horn."""
+        self.command("vehicle_horn")
+
+    def vehicle_health(self) -> float:
+        """Current vehicle health (1000 = perfect)."""
+        (h,) = self.command("vehicle_health")
+        return float(h)
+
+    def vehicle_position(self) -> tuple[float, float, float]:
+        """Vehicle world position."""
+        x, y, z = self.command("vehicle_position")
+        return float(x), float(y), float(z)
+
+    def vehicle_velocity(self, x: float, y: float, z: float) -> None:
+        """Set vehicle velocity vector."""
+        self.command("vehicle_velocity", [x, y, z])
+
+    def vehicle_speed(self) -> float:
+        """Current vehicle speed (units/s, magnitude of move speed)."""
+        (s,) = self.command("vehicle_speed")
+        return float(s)
+
+    def get_dialog(self) -> dict | None:
+        """Read the currently active dialog, or None if none is open."""
+        fields = self.command("get_dialog")
+        if fields[0] == "none":
+            return None
+        return {
+            "id": int(fields[0]),
+            "style": int(fields[1]),
+            "title": fields[2],
+            "button1": fields[3],
+            "button2": fields[4],
+            "text": fields[5],
+        }
+
+    def wait_dialog(self, timeout: float = 5.0) -> dict:
+        """Block until a dialog appears; return it. Raises RemoteControlError on timeout."""
+        fields = self.command("wait_dialog", [timeout])
+        return {
+            "id": int(fields[0]),
+            "style": int(fields[1]),
+            "title": fields[2],
+            "button1": fields[3],
+            "button2": fields[4],
+            "text": fields[5],
+        }
+
+    def wait_message(self, marker: str = "", timeout: float = 5.0) -> str:
+        """Block until a server message arrives (optionally containing marker)."""
+        (msg,) = self.command("wait_message", [marker, timeout])
+        return msg
+
     def send_chat(self, client, text: str, timeout: float = 5.0) -> str:
         """Send a plain chat line via client stdin (no slash requirement)."""
         return client.send_message(text, timeout=timeout)

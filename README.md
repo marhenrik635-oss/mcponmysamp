@@ -160,6 +160,15 @@ Untuk PowerShell, gunakan satu baris. MCP menggunakan transport `stdio`; termina
 | `bot_respawn` | Force respawn. |
 | `bot_reconnect` | Putus & reconnect ke server. |
 | `bot_dialog` | Jawab dialog server. |
+| `bot_vehicle_drive` | Hold key kendaraan (gas/rem/stir -1/0/1). |
+| `bot_vehicle_horn` | Klakson. |
+| `bot_vehicle_health` | HP kendaraan (1000 = sempurna). |
+| `bot_vehicle_position` | Posisi kendaraan. |
+| `bot_vehicle_velocity` | Set velocity kendaraan. |
+| `bot_vehicle_speed` | Kecepatan kendaraan (units/s). |
+| `bot_get_dialog` | Baca dialog server aktif. |
+| `bot_wait_for_dialog` | Tunggu dialog muncul. |
+| `bot_wait_for_message` | Tunggu pesan server (opsional marker). |
 | `bot_get_position` | Posisi body. |
 | `bot_get_rotation` | Heading body. |
 | `bot_get_vehicle` | ID kendaraan saat ini. |

@@ -110,6 +110,33 @@ class DummyRemote:
     def dialog(self, dialog_id, button, list_item=0, input_text=""):
         pass
 
+    def vehicle_drive(self, accel, brake=False, steer=0):
+        pass
+
+    def vehicle_horn(self):
+        pass
+
+    def vehicle_health(self):
+        return 800.0
+
+    def vehicle_position(self):
+        return (1500.0, 2000.0, 25.0)
+
+    def vehicle_velocity(self, x, y, z):
+        pass
+
+    def vehicle_speed(self):
+        return 42.5
+
+    def get_dialog(self):
+        return {"id": 7, "style": 0, "title": "Selamat Datang", "button1": "OK", "button2": "", "text": "Halo"}
+
+    def wait_dialog(self, timeout=5.0):
+        return {"id": 7, "style": 0, "title": "Selamat Datang", "button1": "OK", "button2": "", "text": "Halo"}
+
+    def wait_message(self, marker="", timeout=5.0):
+        return "Selamat datang di server!"
+
     def wait_for_chat(self, client, marker, timeout=15.0):
         return ["line1", "line2"]
 
@@ -183,6 +210,22 @@ def test_bot_utility_tools(app):
     assert _t(app, "bot_get_camera")() == {"x": 100.0, "y": 200.0, "z": 300.0}
     assert _t(app, "bot_get_keys")() == {"keys": 8}
     assert _t(app, "bot_dialog")(1, 1, 0, "") == {"ok": True}
+
+
+def test_bot_vehicle_tools(app):
+    assert _t(app, "bot_vehicle_drive")(True, False, 1) == {"ok": True}
+    assert _t(app, "bot_vehicle_horn")() == {"ok": True}
+    assert _t(app, "bot_vehicle_health")() == {"health": 800.0}
+    assert _t(app, "bot_vehicle_position")() == {"x": 1500.0, "y": 2000.0, "z": 25.0}
+    assert _t(app, "bot_vehicle_velocity")(0.0, 0.0, 10.0) == {"ok": True}
+    assert _t(app, "bot_vehicle_speed")() == {"speed": 42.5}
+
+
+def test_bot_dialog_awareness_tools(app):
+    dlg = {"id": 7, "style": 0, "title": "Selamat Datang", "button1": "OK", "button2": "", "text": "Halo"}
+    assert _t(app, "bot_get_dialog")() == {"dialog": dlg}
+    assert _t(app, "bot_wait_for_dialog")(3.0) == {"dialog": dlg}
+    assert _t(app, "bot_wait_for_message")("Selamat", 3.0) == {"message": "Selamat datang di server!"}
 
 
 def test_bot_ping_raises_when_bridge_down(tmp_path):
