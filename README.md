@@ -136,14 +136,46 @@ Untuk PowerShell, gunakan satu baris. MCP menggunakan transport `stdio`; termina
 | `server_start` | Start server dan tunggu readiness. |
 | `server_status` | Cek server dan PID. |
 | `server_stop` | Stop server. |
+| `server_list_commands` | Daftar command dari source Pawn. |
+| `server_assert_command` | Validasi command terhadap allowlist. |
 | `client_start` | Start headless RakClient. |
 | `client_status` | Cek status client. |
 | `client_stop` | Stop client. |
 | `client_send_chat` | Kirim command slash allowlisted setelah `Spawned`. |
 | `client_get_history` | Ambil output client. |
 | `client_assert_output` | Pastikan response diterima client. |
-| `server_list_commands` | Daftar command dari source Pawn. |
-| `server_assert_command` | Validasi command terhadap allowlist. |
+| `bot_walk_to` | Jalan ke titik (walk/jog/sprint/direct). |
+| `bot_stop` | Berhenti jalan. |
+| `bot_teleport` | Teleport body. |
+| `bot_face_heading` | Hadap arah (derajat). |
+| `bot_face_point` | Hadap titik. |
+| `bot_jump` | Pulse lompat. |
+| `bot_key_hold` | Hold key mask (8=sprint, 4=fire, 32=jump, 128=crouch). |
+| `bot_key_release` | Lepas semua key. |
+| `bot_enter_vehicle` | Masuk kendaraan (ID, seat). |
+| `bot_exit_vehicle` | Keluar kendaraan. |
+| `bot_animation` | Paksa animasi (ID, flags). |
+| `bot_set_velocity` | Set velocity vector. |
+| `bot_send_chat` | Kirim chat (tanpa slash). |
+| `bot_respawn` | Force respawn. |
+| `bot_reconnect` | Putus & reconnect ke server. |
+| `bot_dialog` | Jawab dialog server. |
+| `bot_get_position` | Posisi body. |
+| `bot_get_rotation` | Heading body. |
+| `bot_get_vehicle` | ID kendaraan saat ini. |
+| `bot_get_health` | HP + armour. |
+| `bot_get_weapon` | ID senjata saat ini. |
+| `bot_get_money` | Uang. |
+| `bot_get_nick` | Nickname. |
+| `bot_get_interior` | Interior ID. |
+| `bot_get_camera` | Posisi kamera. |
+| `bot_get_keys` | Key mask yang dihold. |
+| `bot_get_server` | Alamat server. |
+| `bot_is_walking` | Apakah sedang berjalan? |
+| `bot_ping` | Cek apakah bridge script hidup. |
+| `bot_scan_players` | Player di sekitar (ID, posisi). |
+| `bot_scan_vehicles` | Kendaraan di sekitar (ID, posisi, model). |
+| `bot_wait_for_chat` | Tunggu chat mengandung marker. |
 
 ## Workflow AI agent
 

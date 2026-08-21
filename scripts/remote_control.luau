@@ -14,7 +14,8 @@
 --        scan_players  scan_vehicles  key_hold|mask  key_release
 --        enter_vehicle|id|seat  exit_vehicle  get_vehicle
 --        animation|id|flags  set_velocity|x|y|z  get_money  get_nick
---        get_interior  get_server_addr
+--        get_interior  get_server_addr  spawn  reconnect|ms  get_weapon
+--        get_camera  get_keys  dialog|id|button|listItem|input
 -- mode: walk|jog (default)|sprint, prefix "direct " for a straight-line seek.
 
 local QUEUE_KEY = "rcq"
@@ -140,6 +141,24 @@ local function execute(id: string, kind: string, args: { string })
         respond(id, { "ok", tostring(getBotInterior()) })
     elseif kind == "get_server_addr" then
         respond(id, { "ok", getServerAddress() })
+    elseif kind == "spawn" then
+        sampSpawnPlayer()
+        updateSync()
+        respond(id, { "ok" })
+    elseif kind == "reconnect" then
+        reconnect(tonumber(args[1]) or 500)
+        respond(id, { "ok" })
+    elseif kind == "get_weapon" then
+        respond(id, { "ok", tostring(getBotWeapon()) })
+    elseif kind == "get_camera" then
+        local cx, cy, cz = getBotCameraPos()
+        respond(id, { "ok", tostring(cx), tostring(cy), tostring(cz) })
+    elseif kind == "get_keys" then
+        respond(id, { "ok", tostring(getBotKeys()) })
+    elseif kind == "dialog" then
+        local did, btn, item, inp = tonumber(args[1]) or 0, tonumber(args[2]) or 0, tonumber(args[3]) or 0, args[4] or ""
+        sampSendDialogResponse(did, btn, item, inp)
+        respond(id, { "ok" })
     else
         respond(id, { "err", "unknown command: " .. kind })
     end

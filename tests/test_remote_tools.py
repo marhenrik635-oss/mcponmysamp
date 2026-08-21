@@ -92,6 +92,24 @@ class DummyRemote:
     def server_addr(self):
         return "127.0.0.1:7777"
 
+    def respawn(self):
+        pass
+
+    def reconnect(self, delay_ms=500):
+        pass
+
+    def weapon(self):
+        return 24
+
+    def camera_pos(self):
+        return (100.0, 200.0, 300.0)
+
+    def keys(self):
+        return 8
+
+    def dialog(self, dialog_id, button, list_item=0, input_text=""):
+        pass
+
     def wait_for_chat(self, client, marker, timeout=15.0):
         return ["line1", "line2"]
 
@@ -156,6 +174,15 @@ def test_bot_action_tools(app):
 
 def test_bot_wait_for_chat(app):
     assert _t(app, "bot_wait_for_chat")("marker", 5.0) == {"lines": ["line1", "line2"]}
+
+
+def test_bot_utility_tools(app):
+    assert _t(app, "bot_respawn")() == {"ok": True}
+    assert _t(app, "bot_reconnect")(1000) == {"ok": True}
+    assert _t(app, "bot_get_weapon")() == {"weapon": 24}
+    assert _t(app, "bot_get_camera")() == {"x": 100.0, "y": 200.0, "z": 300.0}
+    assert _t(app, "bot_get_keys")() == {"keys": 8}
+    assert _t(app, "bot_dialog")(1, 1, 0, "") == {"ok": True}
 
 
 def test_bot_ping_raises_when_bridge_down(tmp_path):

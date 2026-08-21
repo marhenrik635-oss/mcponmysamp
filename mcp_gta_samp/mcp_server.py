@@ -309,6 +309,52 @@ def create_mcp_server(
         def bot_wait_for_chat(marker: str, timeout: float = 15.0) -> dict[str, list[str]]:
             return {"lines": remote.wait_for_chat(client, marker, timeout)}
 
+        @app.tool(
+            description="Force respawn of the bot (sampSpawnPlayer).",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        )
+        def bot_respawn() -> dict[str, bool]:
+            remote.respawn()
+            return {"ok": True}
+
+        @app.tool(
+            description="Disconnect and reconnect to the server after delay_ms (default 500).",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_reconnect(delay_ms: int = 500) -> dict[str, bool]:
+            remote.reconnect(delay_ms)
+            return {"ok": True}
+
+        @app.tool(
+            description="Get current weapon id (0 = fists).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_get_weapon() -> dict[str, int]:
+            return {"weapon": remote.weapon()}
+
+        @app.tool(
+            description="Get camera world position (differs from body in freecam).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_get_camera() -> dict[str, float]:
+            x, y, z = remote.camera_pos()
+            return {"x": x, "y": y, "z": z}
+
+        @app.tool(
+            description="Get currently held key mask (8=sprint, 4=fire, 32=jump, 128=crouch).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_get_keys() -> dict[str, int]:
+            return {"keys": remote.keys()}
+
+        @app.tool(
+            description="Respond to a server dialog (button 1=left, 0=right; listItem for list dialogs; input_text for input dialogs).",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        )
+        def bot_dialog(dialog_id: int, button: int, list_item: int = 0, input_text: str = "") -> dict[str, bool]:
+            remote.dialog(dialog_id, button, list_item, input_text)
+            return {"ok": True}
+
     return app
 
 

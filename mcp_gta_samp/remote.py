@@ -194,6 +194,33 @@ class RemoteControl:
         fields = self.command("get_server_addr")
         return fields[0]
 
+    def respawn(self) -> None:
+        """Force respawn via sampSpawnPlayer."""
+        self.command("spawn")
+
+    def reconnect(self, delay_ms: int = 500) -> None:
+        """Disconnect and reconnect to the server after delay_ms."""
+        self.command("reconnect", [delay_ms])
+
+    def weapon(self) -> int:
+        """Current weapon id (0 = fists)."""
+        fields = self.command("get_weapon")
+        return int(fields[0])
+
+    def camera_pos(self) -> tuple[float, float, float]:
+        """Camera world position (differs from body when in freecam)."""
+        cx, cy, cz = self.command("get_camera")
+        return float(cx), float(cy), float(cz)
+
+    def keys(self) -> int:
+        """Current held key mask (8=sprint, 4=fire, 32=jump, 128=crouch)."""
+        fields = self.command("get_keys")
+        return int(fields[0])
+
+    def dialog(self, dialog_id: int, button: int, list_item: int = 0, input_text: str = "") -> None:
+        """Respond to a server dialog (button 1=left, 0=right)."""
+        self.command("dialog", [dialog_id, button, list_item, input_text])
+
     def send_chat(self, client, text: str, timeout: float = 5.0) -> str:
         """Send a plain chat line via client stdin (no slash requirement)."""
         return client.send_message(text, timeout=timeout)
