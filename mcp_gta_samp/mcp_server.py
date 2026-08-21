@@ -468,6 +468,73 @@ def create_mcp_server(
         def bot_scan_objects() -> dict[str, list[dict]]:
             return {"objects": remote.scan_objects()}
 
+        @app.tool(
+            description="Change the bot's nickname.",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        )
+        def bot_set_nick(nick: str) -> dict[str, bool]:
+            remote.set_nick(nick)
+            return {"ok": True}
+
+        @app.tool(
+            description="Play a named animation: sit, dance, wave, cheer, clap, cry, laugh, salute, point, fall, dodge, punch, kick, dead, crouch.",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        )
+        def bot_play_animation(name: str) -> dict[str, bool]:
+            remote.play_anim(name)
+            return {"ok": True}
+
+        @app.tool(
+            description="List available named animations.",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_list_animations() -> dict[str, list[str]]:
+            return {"anims": remote.list_anims()}
+
+        @app.tool(
+            description="Get server world info: time, weather, gravity.",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_get_server_info() -> dict[str, float | int]:
+            return remote.server_info()
+
+        @app.tool(
+            description="Get combined bot state: position, vehicle, world time, interior.",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_get_state() -> dict[str, float | int]:
+            return remote.state()
+
+        @app.tool(
+            description="List players with health, armor, weapon, vehicle (from player sync).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_scan_players_detail() -> dict[str, list[dict]]:
+            return {"players": remote.scan_players_detail()}
+
+        @app.tool(
+            description="List vehicles with health, speed, position (from vehicle sync).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_scan_vehicles_detail() -> dict[str, list[dict]]:
+            return {"vehicles": remote.scan_vehicles_detail()}
+
+        @app.tool(
+            description="Pulse the fire key (single shot with current weapon).",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_fire() -> dict[str, bool]:
+            remote.fire()
+            return {"ok": True}
+
+        @app.tool(
+            description="Send a slash command via RPC (no allowlist check).",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_send_command(command: str) -> dict[str, bool]:
+            remote.send_command(command)
+            return {"ok": True}
+
     return app
 
 

@@ -21,6 +21,8 @@
 --        get_dialog  wait_dialog|timeout  wait_message|marker|timeout
 --        click_textdraw|id  pickup_pickup|id  target_entity|object|vehicle|player|actor
 --        scan_textlabels  scan_pickups  scan_objects
+--        set_nick|nick  anim|name  list_anims  get_server_info  get_state
+--        scan_players_detail  scan_vehicles_detail  fire|pulse  send_command|cmd
 -- mode: walk|jog (default)|sprint, prefix "direct " for a straight-line seek.
 
 local QUEUE_KEY = "rcq"
@@ -38,6 +40,20 @@ local last_message = ""
 local world_textlabels: { { id: number, color: number, x: number, y: number, z: number, text: string } } = {}
 local world_pickups: { { id: number, model: number, pickupType: number, x: number, y: number, z: number } } = {}
 local world_objects: { { id: number, model: number, x: number, y: number, z: number } } = {}
+local players_detail: { { id: number, x: number, y: number, z: number, health: number, armor: number, weapon: number, vehicle: number, in_vehicle: boolean } } = {}
+local vehicles_detail: { { id: number, health: number, speed: number, x: number, y: number, z: number, model: number } } = {}
+local server_info = { worldtime = -1, weather = -1, gravity = 0.008 }
+local spawned = false
+local last_death_at = 0
+
+-- Named animations (id, flags). id from GTA-SA anim index; flags 0x8004 = loop+walk-velocity.
+local ANIMS = {
+    sit = { 1189, 0x8004 }, dance = { 1185, 0x8004 }, wave = { 222, 0x8004 },
+    cheer = { 1413, 0x8004 }, clap = { 1470, 0x8004 }, cry = { 1444, 0x8004 },
+    laugh = { 1163, 0x8004 }, salute = { 1500, 0x8004 }, point = { 1500, 0x8004 },
+    fall = { 1200, 0x8004 }, dodge = { 1135, 0x8004 }, punch = { 290, 0x8004 },
+    kick = { 295, 0x8004 }, dead = { 1203, 0x8004 }, crouch = { 1231, 0x8004 },
+}
 
 local tick = 0
 
@@ -261,6 +277,55 @@ local function execute(id: string, kind: string, args: { string })
             table.insert(out, tostring(o.id) .. "," .. tostring(o.model) .. "," .. tostring(o.x) .. "," .. tostring(o.y) .. "," .. tostring(o.z))
         end
         respond(id, { "ok", table.concat(out, ";") })
+    elseif kind == "set_nick" then
+        setBotNick(args[1] or "")
+        respond(id, { "ok" })
+    elseif kind == "anim" then
+        local anim = ANIMS[args[1]]
+        if anim == nil then
+            respond(id, { "err", "unknown anim: " .. (args[1] or "?") })
+        else
+            setBotAnimation(anim[1], anim[2])
+            updateSync()
+            respond(id, { "ok" })
+        end
+    elseif kind == "list_anims" then
+        local names: { string } = {}
+        for name, _ in pairs(ANIMS) do
+            table.insert(names, name)
+        end
+        respond(id, { "ok", table.concat(names, ",") })
+    elseif kind == "get_server_info" then
+        respond(id, { "ok", tostring(server_info.worldtime), tostring(server_info.weather), tostring(server_info.gravity) })
+    elseif kind == "get_state" then
+        local x, y, z = getBotPosition()
+        local veh = getBotVehicle()
+        local hp = 0
+        -- approximated: health comes from sync, but on-foot we don't have a global health tracker.
+        -- We'll use the vehicle state if in vehicle, or last known from player sync.
+        respond(id, { "ok", tostring(x), tostring(y), tostring(z), tostring(veh), tostring(server_info.worldtime), tostring(getBotInterior()) })
+    elseif kind == "scan_players_detail" then
+        local out: { string } = {}
+        for _, p in ipairs(players_detail) do
+            table.insert(out, tostring(p.id) .. "," .. tostring(p.x) .. "," .. tostring(p.y) .. "," .. tostring(p.z) .. "," .. tostring(p.health) .. "," .. tostring(p.armor) .. "," .. tostring(p.weapon) .. "," .. tostring(p.vehicle) .. "," .. (p.in_vehicle and "1" or "0"))
+        end
+        respond(id, { "ok", table.concat(out, ";") })
+    elseif kind == "scan_vehicles_detail" then
+        local out: { string } = {}
+        for _, v in ipairs(vehicles_detail) do
+            table.insert(out, tostring(v.id) .. "," .. tostring(v.health) .. "," .. tostring(v.speed) .. "," .. tostring(v.x) .. "," .. tostring(v.y) .. "," .. tostring(v.z) .. "," .. tostring(v.model))
+        end
+        respond(id, { "ok", table.concat(out, ";") })
+    elseif kind == "fire" then
+        -- Pulse fire key (4) to simulate a single shot.
+        setBotKeys(4)
+        updateSync()
+        setBotKeys(0)
+        updateSync()
+        respond(id, { "ok" })
+    elseif kind == "send_command" then
+        sendInput("/" .. (args[1] or ""))
+        respond(id, { "ok" })
     else
         respond(id, { "err", "unknown command: " .. kind })
     end
@@ -412,5 +477,105 @@ registerHandler("onReceiveRPC", function(id, bs)
         for i, p in ipairs(world_pickups) do
             if p.id == pid then table.remove(world_pickups, i) break end
         end
+    end
+end)
+
+-- Incoming player sync (207) → per-player health/armor/weapon/vehicle tracking.
+-- playerId u16, lr u16, ud u16, keys u16, pos 3x f32, quat (4 bool + 3x u16), health/armor u8, weapon u8, ...
+registerHandler("onReceivePacket", function(id, bs)
+    if id ~= 207 then
+        return
+    end
+    bs:ignoreBits(8)
+    local pid = bs:readUInt16()
+    bs:readUInt16() -- leftRight
+    bs:readUInt16() -- upDown
+    bs:readUInt16() -- keys
+    local x, y, z = bs:readFloat(), bs:readFloat(), bs:readFloat()
+    bs:readBool() bs:readBool() bs:readBool() bs:readBool() -- quat signs
+    bs:readUInt16() bs:readUInt16() bs:readUInt16() -- quat xyz
+    local packed = bs:readUInt8()
+    local health = math.min(bit32.rshift(packed, 4) * 7, 100)
+    local armor = math.min(bit32.band(packed, 0x0F) * 7, 100)
+    local weapon = bs:readUInt8()
+    bs:readUInt8() -- special action
+    bs:readUInt16() bs:readUInt16() bs:readUInt16() -- move speed compressed
+    bs:readUInt16() bs:readUInt16() bs:readUInt16() -- surfing offset
+    local veh = bs:readUInt16()
+    local replaced = false
+    for i, p in ipairs(players_detail) do
+        if p.id == pid then
+            players_detail[i] = { id = pid, x = x, y = y, z = z, health = health, armor = armor, weapon = weapon, vehicle = veh, in_vehicle = veh ~= 0 }
+            replaced = true
+            break
+        end
+    end
+    if not replaced then table.insert(players_detail, { id = pid, x = x, y = y, z = z, health = health, armor = armor, weapon = weapon, vehicle = veh, in_vehicle = veh ~= 0 }) end
+end)
+
+-- Incoming vehicle sync (200) → per-vehicle health/speed/position tracking.
+-- playerId u16, vehicleId u16, lr u16, ud u16, keys u16, quat (4 bool + 3x u16), pos 3x f32,
+-- moveSpeed 3x compressed, vehicleHealth u16, ...
+registerHandler("onReceivePacket", function(id, bs)
+    if id ~= 200 then
+        return
+    end
+    bs:ignoreBits(8)
+    bs:readUInt16() -- playerId
+    local vid = bs:readUInt16()
+    bs:readUInt16() -- leftRight
+    bs:readUInt16() -- upDown
+    bs:readUInt16() -- keys
+    bs:readBool() bs:readBool() bs:readBool() bs:readBool() -- quat signs
+    bs:readUInt16() bs:readUInt16() bs:readUInt16() -- quat xyz
+    local x, y, z = bs:readFloat(), bs:readFloat(), bs:readFloat()
+    local spdx = bs:readUInt16() / 32767.5 - 1
+    local spdy = bs:readUInt16() / 32767.5 - 1
+    local spdz = bs:readUInt16() / 32767.5 - 1
+    local speed = math.sqrt(spdx * spdx + spdy * spdy + spdz * spdz)
+    local health = bs:readUInt16()
+    local replaced = false
+    for i, v in ipairs(vehicles_detail) do
+        if v.id == vid then
+            vehicles_detail[i] = { id = vid, health = health, speed = speed, x = x, y = y, z = z, model = v.model }
+            replaced = true
+            break
+        end
+    end
+    if not replaced then table.insert(vehicles_detail, { id = vid, health = health, speed = speed, x = x, y = y, z = z, model = 0 }) end
+end)
+
+-- Incoming INITGAME (139) → worldtime, weather, gravity.
+registerHandler("onReceiveRPC", function(id, bs)
+    if id == 139 then
+        bs:ignoreBits(8)
+        bs:readBool() bs:readBool() bs:readBool() bs:readBool() -- zone names, CJ walk, weapons, chat radius
+        bs:readFloat() -- chat radius
+        bs:readBool() -- stunt bonus
+        bs:readFloat() -- nametag draw distance
+        bs:readBool() -- disable enter exits
+        bs:readBool() -- nametag LOS
+        bs:readBool() -- tire popping
+        bs:readInt32() -- classes available
+        bs:readUInt16() -- playerId
+        bs:readBool() -- show player tags
+        bs:readInt32() -- player markers mode
+        server_info.worldtime = bs:readUInt8()
+        server_info.weather = bs:readUInt8()
+        server_info.gravity = bs:readFloat()
+    end
+end)
+
+-- Spawn response (129) → spawned flag for wait_for_spawn / death tracking.
+registerHandler("onReceiveRPC", function(id, bs)
+    if id == 129 then
+        spawned = true
+    end
+end)
+
+-- Player death (55) → last death timestamp.
+registerHandler("onReceiveRPC", function(id, bs)
+    if id == 55 then
+        last_death_at = os.clock() * 1000
     end
 end)

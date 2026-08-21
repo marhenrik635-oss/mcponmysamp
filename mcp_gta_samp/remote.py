@@ -324,6 +324,65 @@ class RemoteControl:
             out.append({"id": int(parts[0]), "model": int(parts[1]), "x": float(parts[2]), "y": float(parts[3]), "z": float(parts[4])})
         return out
 
+    def set_nick(self, nick: str) -> None:
+        """Change the bot's nickname."""
+        self.command("set_nick", [nick])
+
+    def play_anim(self, name: str) -> None:
+        """Play a named animation (see ANIMS in remote_control.luau)."""
+        self.command("anim", [name])
+
+    def list_anims(self) -> list[str]:
+        (names,) = self.command("list_anims")
+        return names.split(",") if names else []
+
+    def server_info(self) -> dict:
+        """World time, weather, gravity."""
+        wt, we, gr = self.command("get_server_info")
+        return {"worldtime": int(wt), "weather": int(we), "gravity": float(gr)}
+
+    def state(self) -> dict:
+        """Combined bot state: position, vehicle, world time, interior."""
+        x, y, z, veh, wt, interior = self.command("get_state")
+        return {"x": float(x), "y": float(y), "z": float(z), "vehicle": int(veh), "worldtime": int(wt), "interior": int(interior)}
+
+    def scan_players_detail(self) -> list[dict]:
+        """Per-player health/armor/weapon/vehicle from player sync."""
+        (payload,) = self.command("scan_players_detail")
+        out = []
+        for entry in payload.split(";"):
+            if not entry:
+                continue
+            parts = entry.split(",")
+            out.append({
+                "id": int(parts[0]), "x": float(parts[1]), "y": float(parts[2]), "z": float(parts[3]),
+                "health": float(parts[4]), "armor": float(parts[5]), "weapon": int(parts[6]),
+                "vehicle": int(parts[7]), "in_vehicle": parts[8] == "1",
+            })
+        return out
+
+    def scan_vehicles_detail(self) -> list[dict]:
+        """Per-vehicle health/speed/position from vehicle sync."""
+        (payload,) = self.command("scan_vehicles_detail")
+        out = []
+        for entry in payload.split(";"):
+            if not entry:
+                continue
+            parts = entry.split(",")
+            out.append({
+                "id": int(parts[0]), "health": float(parts[1]), "speed": float(parts[2]),
+                "x": float(parts[3]), "y": float(parts[4]), "z": float(parts[5]), "model": int(parts[6]),
+            })
+        return out
+
+    def fire(self) -> None:
+        """Pulse the fire key (single shot)."""
+        self.command("fire")
+
+    def send_command(self, cmd: str) -> None:
+        """Send a slash command via RPC (no allowlist)."""
+        self.command("send_command", [cmd.lstrip("/")])
+
     def send_chat(self, client, text: str, timeout: float = 5.0) -> str:
         """Send a plain chat line via client stdin (no slash requirement)."""
         return client.send_message(text, timeout=timeout)

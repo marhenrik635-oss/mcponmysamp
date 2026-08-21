@@ -155,6 +155,33 @@ class DummyRemote:
     def scan_objects(self):
         return [{"id": 1, "model": 19341, "x": 1.0, "y": 2.0, "z": 3.0}]
 
+    def set_nick(self, nick):
+        pass
+
+    def play_anim(self, name):
+        pass
+
+    def list_anims(self):
+        return ["sit", "dance", "wave", "cheer", "clap", "cry", "laugh", "salute", "point", "fall", "dodge", "punch", "kick", "dead", "crouch"]
+
+    def server_info(self):
+        return {"worldtime": 12, "weather": 1, "gravity": 0.008}
+
+    def state(self):
+        return {"x": 1.0, "y": 2.0, "z": 3.0, "vehicle": 0, "worldtime": 12, "interior": 0}
+
+    def scan_players_detail(self):
+        return [{"id": 1, "x": 1.0, "y": 2.0, "z": 3.0, "health": 100.0, "armor": 0.0, "weapon": 0, "vehicle": 0, "in_vehicle": False}]
+
+    def scan_vehicles_detail(self):
+        return [{"id": 1, "health": 800.0, "speed": 20.0, "x": 1.0, "y": 2.0, "z": 3.0, "model": 411}]
+
+    def fire(self):
+        pass
+
+    def send_command(self, cmd):
+        pass
+
     def wait_for_chat(self, client, marker, timeout=15.0):
         return ["line1", "line2"]
 
@@ -259,6 +286,29 @@ def test_bot_world_scan_tools(app):
     assert _t(app, "bot_scan_textlabels")() == {"labels": labels}
     assert _t(app, "bot_scan_pickups")() == {"pickups": pickups}
     assert _t(app, "bot_scan_objects")() == {"objects": objects}
+
+
+def test_bot_social_tools(app):
+    assert _t(app, "bot_set_nick")("NewName") == {"ok": True}
+    assert _t(app, "bot_play_animation")("dance") == {"ok": True}
+    assert _t(app, "bot_list_animations")()["anims"][0] == "sit"
+
+
+def test_bot_server_info_tools(app):
+    assert _t(app, "bot_get_server_info")() == {"worldtime": 12, "weather": 1, "gravity": 0.008}
+    assert _t(app, "bot_get_state")() == {"x": 1.0, "y": 2.0, "z": 3.0, "vehicle": 0, "worldtime": 12, "interior": 0}
+
+
+def test_bot_detail_scan_tools(app):
+    players = [{"id": 1, "x": 1.0, "y": 2.0, "z": 3.0, "health": 100.0, "armor": 0.0, "weapon": 0, "vehicle": 0, "in_vehicle": False}]
+    vehicles = [{"id": 1, "health": 800.0, "speed": 20.0, "x": 1.0, "y": 2.0, "z": 3.0, "model": 411}]
+    assert _t(app, "bot_scan_players_detail")() == {"players": players}
+    assert _t(app, "bot_scan_vehicles_detail")() == {"vehicles": vehicles}
+
+
+def test_bot_combat_tools(app):
+    assert _t(app, "bot_fire")() == {"ok": True}
+    assert _t(app, "bot_send_command")("/help") == {"ok": True}
 
 
 def test_bot_ping_raises_when_bridge_down(tmp_path):
