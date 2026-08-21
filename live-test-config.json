@@ -1,0 +1,7 @@
+{
+  "executable": "D:/Folderku/mcp-gta-samp/vendor/openmp/Server/omp-server.exe",
+  "working_dir": "D:/Folderku/mcp-gta-samp/vendor/openmp/Server",
+  "args": ["--config-path", "config.json"],
+  "ready_text": "Legacy Network started on port",
+  "startup_timeout": 30
+}

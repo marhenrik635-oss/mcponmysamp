@@ -1,5 +1,6 @@
 --!strict
 -- Remote control bridge: lets an MCP agent drive the bot through the shared file store.
+require("addon") -- exposes sendInput/sendClickTextdraw/sendPickedUpPickup/sendTargetUpdate globals
 --
 -- Protocol (pipe-delimited, no JSON available in the script env):
 --   queue key  "rcq": <id>|<kind>|<arg>|...
@@ -383,10 +384,10 @@ registerHandler("onReceivePacket", function(id, bs)
 end)
 
 -- Incoming SHOWDIALOG (RPC 61) → record the dialog for MCP.
+-- NOTE: onReceiveRPC payload excludes the RPC id byte (raknet wire.rs strips it) — no ignoreBits here.
 -- Wire format: dialogId u16, style u8, title string8, button1 string8, button2 string8, text encodedString4096.
 registerHandler("onReceiveRPC", function(id, bs)
     if id == 61 then -- RPC_SCRSHOWDIALOG
-        bs:ignoreBits(8)
         dialog_state.id = bs:readUInt16()
         dialog_state.style = bs:readUInt8()
         dialog_state.title = bs:readString(bs:readUInt8())
@@ -397,10 +398,9 @@ registerHandler("onReceiveRPC", function(id, bs)
     end
 end)
 
--- Incoming server message (RPC 93) → capture for wait_message.
+-- Incoming server message (RPC 93) → capture for wait_message. Payload excludes RPC id.
 registerHandler("onReceiveRPC", function(id, bs)
     if id == 93 then -- RPC_SCRCLIENTMESSAGE
-        bs:ignoreBits(8)
         bs:readInt32() -- color
         last_message = bs:readString(bs:readUInt8())
     end
@@ -411,7 +411,6 @@ end)
 -- attachPlayer u16, attachVehicle u16, text encodedString4096.
 registerHandler("onReceiveRPC", function(id, bs)
     if id == 36 then
-        bs:ignoreBits(8)
         local e = {}
         e.id = bs:readUInt16()
         e.color = bs:readInt32()
@@ -427,7 +426,6 @@ registerHandler("onReceiveRPC", function(id, bs)
         end
         if not replaced then table.insert(world_textlabels, e) end
     elseif id == 45 then -- DESTROY3DTEXTLABEL: labelId u16
-        bs:ignoreBits(8)
         local lid = bs:readUInt16()
         for i, t in ipairs(world_textlabels) do
             if t.id == lid then table.remove(world_textlabels, i) break end
@@ -438,7 +436,6 @@ end)
 -- RPC 44 CREATEOBJECT: objectId u16, modelId i32, pos 3x f32, rot 3x f32, drawDist f32, ...
 registerHandler("onReceiveRPC", function(id, bs)
     if id == 44 then
-        bs:ignoreBits(8)
         local oid = bs:readUInt16()
         local model = bs:readInt32()
         local x, y, z = bs:readFloat(), bs:readFloat(), bs:readFloat()
@@ -449,7 +446,6 @@ registerHandler("onReceiveRPC", function(id, bs)
         end
         if not replaced then table.insert(world_objects, e) end
     elseif id == 47 then -- DESTROYOBJECT: objectId u16
-        bs:ignoreBits(8)
         local oid = bs:readUInt16()
         for i, o in ipairs(world_objects) do
             if o.id == oid then table.remove(world_objects, i) break end
@@ -457,10 +453,9 @@ registerHandler("onReceiveRPC", function(id, bs)
     end
 end)
 
--- RPC 95 CREATEPICKUP: id i32, model i32, pickupType i32, pos 3x f32.
+-- RPC 95 CREATEPICKUP: id i32, model i32, pickupType i32, pos 3x f32. Payload excludes RPC id.
 registerHandler("onReceiveRPC", function(id, bs)
     if id == 95 then
-        bs:ignoreBits(8)
         local pid = bs:readInt32()
         local model = bs:readInt32()
         local ptype = bs:readInt32()
@@ -472,7 +467,6 @@ registerHandler("onReceiveRPC", function(id, bs)
         end
         if not replaced then table.insert(world_pickups, e) end
     elseif id == 63 then -- DESTROYPICKUP: id i32
-        bs:ignoreBits(8)
         local pid = bs:readInt32()
         for i, p in ipairs(world_pickups) do
             if p.id == pid then table.remove(world_pickups, i) break end
@@ -545,35 +539,38 @@ registerHandler("onReceivePacket", function(id, bs)
     if not replaced then table.insert(vehicles_detail, { id = vid, health = health, speed = speed, x = x, y = y, z = z, model = 0 }) end
 end)
 
--- Incoming INITGAME (139) → worldtime, weather, gravity.
+-- Incoming INITGAME (139) → worldtime, weather, gravity. Payload excludes RPC id.
+-- Booleans are 1-bit (readBool), matching samp.events rpc_init_game_reader.
 registerHandler("onReceiveRPC", function(id, bs)
     if id == 139 then
-        bs:ignoreBits(8)
-        bs:readBool() bs:readBool() bs:readBool() bs:readBool() -- zone names, CJ walk, weapons, chat radius
-        bs:readFloat() -- chat radius
-        bs:readBool() -- stunt bonus
-        bs:readFloat() -- nametag draw distance
-        bs:readBool() -- disable enter exits
-        bs:readBool() -- nametag LOS
-        bs:readBool() -- tire popping
-        bs:readInt32() -- classes available
+        bs:readBool() -- zoneNames
+        bs:readBool() -- useCJWalk
+        bs:readBool() -- allowWeapons
+        bs:readBool() -- limitGlobalChatRadius
+        bs:readFloat() -- globalChatRadius
+        bs:readBool() -- stuntBonus
+        bs:readFloat() -- nametagDrawDist
+        bs:readBool() -- disableEnterExits
+        bs:readBool() -- nametagLOS
+        bs:readBool() -- tirePopping
+        bs:readInt32() -- classesAvailable
         bs:readUInt16() -- playerId
-        bs:readBool() -- show player tags
-        bs:readInt32() -- player markers mode
+        bs:readBool() -- showPlayerTags
+        bs:readInt32() -- playerMarkersMode
         server_info.worldtime = bs:readUInt8()
         server_info.weather = bs:readUInt8()
         server_info.gravity = bs:readFloat()
     end
 end)
 
--- Spawn response (129) → spawned flag for wait_for_spawn / death tracking.
+-- Spawn response (129) → spawned flag for wait_for_spawn / death tracking. Payload excludes RPC id.
 registerHandler("onReceiveRPC", function(id, bs)
     if id == 129 then
         spawned = true
     end
 end)
 
--- Player death (55) → last death timestamp.
+-- Player death (55) → last death timestamp. Payload excludes RPC id.
 registerHandler("onReceiveRPC", function(id, bs)
     if id == 55 then
         last_death_at = os.clock() * 1000
