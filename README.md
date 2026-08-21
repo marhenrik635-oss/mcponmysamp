@@ -169,6 +169,12 @@ Untuk PowerShell, gunakan satu baris. MCP menggunakan transport `stdio`; termina
 | `bot_get_dialog` | Baca dialog server aktif. |
 | `bot_wait_for_dialog` | Tunggu dialog muncul. |
 | `bot_wait_for_message` | Tunggu pesan server (opsional marker). |
+| `bot_click_textdraw` | Klik textdraw (RPC 83). |
+| `bot_pickup_pickup` | Ambil pickup (RPC 131). |
+| `bot_target_entity` | Set target aim (object/vehicle/player/actor). |
+| `bot_scan_textlabels` | 3D text label di sekitar. |
+| `bot_scan_pickups` | Pickup di sekitar. |
+| `bot_scan_objects` | Object di sekitar. |
 | `bot_get_position` | Posisi body. |
 | `bot_get_rotation` | Heading body. |
 | `bot_get_vehicle` | ID kendaraan saat ini. |

@@ -423,6 +423,51 @@ def create_mcp_server(
         def bot_wait_for_message(marker: str = "", timeout: float = 5.0) -> dict[str, str]:
             return {"message": remote.wait_message(marker, timeout)}
 
+        @app.tool(
+            description="Click a textdraw by id (RPC 83).",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_click_textdraw(textdraw_id: int) -> dict[str, bool]:
+            remote.click_textdraw(textdraw_id)
+            return {"ok": True}
+
+        @app.tool(
+            description="Pick up a pickup by id (RPC 131).",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_pickup_pickup(pickup_id: int) -> dict[str, bool]:
+            remote.pickup_pickup(pickup_id)
+            return {"ok": True}
+
+        @app.tool(
+            description="Set aim target entity ids: object, vehicle, player, actor (RPC 168). Zero = none.",
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        )
+        def bot_target_entity(object_id: int = 0, vehicle_id: int = 0, player_id: int = 0, actor_id: int = 0) -> dict[str, bool]:
+            remote.target_entity(object_id, vehicle_id, player_id, actor_id)
+            return {"ok": True}
+
+        @app.tool(
+            description="List 3D text labels streamed around the bot (id, color, position, text).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_scan_textlabels() -> dict[str, list[dict]]:
+            return {"labels": remote.scan_textlabels()}
+
+        @app.tool(
+            description="List pickups streamed around the bot (id, model, type, position).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_scan_pickups() -> dict[str, list[dict]]:
+            return {"pickups": remote.scan_pickups()}
+
+        @app.tool(
+            description="List objects streamed around the bot (id, model, position).",
+            annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        def bot_scan_objects() -> dict[str, list[dict]]:
+            return {"objects": remote.scan_objects()}
+
     return app
 
 

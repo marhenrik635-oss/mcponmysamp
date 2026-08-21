@@ -19,6 +19,8 @@
 --        vehicle_drive|accel|brake|steer  vehicle_horn  vehicle_health
 --        vehicle_position  vehicle_velocity|x|y|z  vehicle_speed
 --        get_dialog  wait_dialog|timeout  wait_message|marker|timeout
+--        click_textdraw|id  pickup_pickup|id  target_entity|object|vehicle|player|actor
+--        scan_textlabels  scan_pickups  scan_objects
 -- mode: walk|jog (default)|sprint, prefix "direct " for a straight-line seek.
 
 local QUEUE_KEY = "rcq"
@@ -33,6 +35,9 @@ local VKEY_LEFT, VKEY_RIGHT, VKEY_HORN = 16, 32, 64
 local vehicle_state = { health = 0, speed = 0.0, x = 0.0, y = 0.0, z = 0.0, keys = 0 }
 local dialog_state = { active = false, id = 0, style = 0, title = "", button1 = "", button2 = "", text = "" }
 local last_message = ""
+local world_textlabels: { { id: number, color: number, x: number, y: number, z: number, text: string } } = {}
+local world_pickups: { { id: number, model: number, pickupType: number, x: number, y: number, z: number } } = {}
+local world_objects: { { id: number, model: number, x: number, y: number, z: number } } = {}
 
 local tick = 0
 
@@ -229,6 +234,33 @@ local function execute(id: string, kind: string, args: { string })
             wait(50)
         end
         respond(id, { "err", "no message within " .. tostring(timeout) .. "s" })
+    elseif kind == "click_textdraw" then
+        sendClickTextdraw(tonumber(args[1]) or 0)
+        respond(id, { "ok" })
+    elseif kind == "pickup_pickup" then
+        sendPickedUpPickup(tonumber(args[1]) or 0)
+        respond(id, { "ok" })
+    elseif kind == "target_entity" then
+        sendTargetUpdate(tonumber(args[1]) or 0, tonumber(args[2]) or 0, tonumber(args[3]) or 0, tonumber(args[4]) or 0)
+        respond(id, { "ok" })
+    elseif kind == "scan_textlabels" then
+        local out: { string } = {}
+        for _, t in ipairs(world_textlabels) do
+            table.insert(out, tostring(t.id) .. "," .. tostring(t.color) .. "," .. tostring(t.x) .. "," .. tostring(t.y) .. "," .. tostring(t.z) .. "," .. tostring(t.text))
+        end
+        respond(id, { "ok", table.concat(out, ";") })
+    elseif kind == "scan_pickups" then
+        local out: { string } = {}
+        for _, p in ipairs(world_pickups) do
+            table.insert(out, tostring(p.id) .. "," .. tostring(p.model) .. "," .. tostring(p.pickupType) .. "," .. tostring(p.x) .. "," .. tostring(p.y) .. "," .. tostring(p.z))
+        end
+        respond(id, { "ok", table.concat(out, ";") })
+    elseif kind == "scan_objects" then
+        local out: { string } = {}
+        for _, o in ipairs(world_objects) do
+            table.insert(out, tostring(o.id) .. "," .. tostring(o.model) .. "," .. tostring(o.x) .. "," .. tostring(o.y) .. "," .. tostring(o.z))
+        end
+        respond(id, { "ok", table.concat(out, ";") })
     else
         respond(id, { "err", "unknown command: " .. kind })
     end
@@ -306,5 +338,79 @@ registerHandler("onReceiveRPC", function(id, bs)
         bs:ignoreBits(8)
         bs:readInt32() -- color
         last_message = bs:readString(bs:readUInt8())
+    end
+end)
+
+-- Incoming world entities → keep a live view for MCP scans.
+-- RPC 36 CREATE3DTEXTLABEL: id u16, color i32, pos 3x f32, distance f32, testLOS bool8,
+-- attachPlayer u16, attachVehicle u16, text encodedString4096.
+registerHandler("onReceiveRPC", function(id, bs)
+    if id == 36 then
+        bs:ignoreBits(8)
+        local e = {}
+        e.id = bs:readUInt16()
+        e.color = bs:readInt32()
+        e.x, e.y, e.z = bs:readFloat(), bs:readFloat(), bs:readFloat()
+        bs:readFloat() -- distance
+        bs:readBool() -- testLOS
+        bs:readUInt16() -- attachedPlayerId
+        bs:readUInt16() -- attachedVehicleId
+        e.text = bs:readEncoded(4096)
+        local replaced = false
+        for i, t in ipairs(world_textlabels) do
+            if t.id == e.id then world_textlabels[i] = e replaced = true break end
+        end
+        if not replaced then table.insert(world_textlabels, e) end
+    elseif id == 45 then -- DESTROY3DTEXTLABEL: labelId u16
+        bs:ignoreBits(8)
+        local lid = bs:readUInt16()
+        for i, t in ipairs(world_textlabels) do
+            if t.id == lid then table.remove(world_textlabels, i) break end
+        end
+    end
+end)
+
+-- RPC 44 CREATEOBJECT: objectId u16, modelId i32, pos 3x f32, rot 3x f32, drawDist f32, ...
+registerHandler("onReceiveRPC", function(id, bs)
+    if id == 44 then
+        bs:ignoreBits(8)
+        local oid = bs:readUInt16()
+        local model = bs:readInt32()
+        local x, y, z = bs:readFloat(), bs:readFloat(), bs:readFloat()
+        local e = { id = oid, model = model, x = x, y = y, z = z }
+        local replaced = false
+        for i, o in ipairs(world_objects) do
+            if o.id == oid then world_objects[i] = e replaced = true break end
+        end
+        if not replaced then table.insert(world_objects, e) end
+    elseif id == 47 then -- DESTROYOBJECT: objectId u16
+        bs:ignoreBits(8)
+        local oid = bs:readUInt16()
+        for i, o in ipairs(world_objects) do
+            if o.id == oid then table.remove(world_objects, i) break end
+        end
+    end
+end)
+
+-- RPC 95 CREATEPICKUP: id i32, model i32, pickupType i32, pos 3x f32.
+registerHandler("onReceiveRPC", function(id, bs)
+    if id == 95 then
+        bs:ignoreBits(8)
+        local pid = bs:readInt32()
+        local model = bs:readInt32()
+        local ptype = bs:readInt32()
+        local x, y, z = bs:readFloat(), bs:readFloat(), bs:readFloat()
+        local e = { id = pid, model = model, pickupType = ptype, x = x, y = y, z = z }
+        local replaced = false
+        for i, p in ipairs(world_pickups) do
+            if p.id == pid then world_pickups[i] = e replaced = true break end
+        end
+        if not replaced then table.insert(world_pickups, e) end
+    elseif id == 63 then -- DESTROYPICKUP: id i32
+        bs:ignoreBits(8)
+        local pid = bs:readInt32()
+        for i, p in ipairs(world_pickups) do
+            if p.id == pid then table.remove(world_pickups, i) break end
+        end
     end
 end)

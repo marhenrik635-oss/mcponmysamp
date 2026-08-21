@@ -279,6 +279,51 @@ class RemoteControl:
         (msg,) = self.command("wait_message", [marker, timeout])
         return msg
 
+    def click_textdraw(self, textdraw_id: int) -> None:
+        """Click a textdraw (RPC 83)."""
+        self.command("click_textdraw", [textdraw_id])
+
+    def pickup_pickup(self, pickup_id: int) -> None:
+        """Pick up a pickup (RPC 131)."""
+        self.command("pickup_pickup", [pickup_id])
+
+    def target_entity(self, obj: int = 0, veh: int = 0, player: int = 0, actor: int = 0) -> None:
+        """Set aim target entity ids (RPC 168)."""
+        self.command("target_entity", [obj, veh, player, actor])
+
+    def scan_textlabels(self) -> list[dict]:
+        """3D text labels streamed around the bot."""
+        (payload,) = self.command("scan_textlabels")
+        out = []
+        for entry in payload.split(";"):
+            if not entry:
+                continue
+            parts = entry.split(",", 5)
+            out.append({"id": int(parts[0]), "color": int(parts[1]), "x": float(parts[2]), "y": float(parts[3]), "z": float(parts[4]), "text": parts[5]})
+        return out
+
+    def scan_pickups(self) -> list[dict]:
+        """Pickups streamed around the bot."""
+        (payload,) = self.command("scan_pickups")
+        out = []
+        for entry in payload.split(";"):
+            if not entry:
+                continue
+            parts = entry.split(",")
+            out.append({"id": int(parts[0]), "model": int(parts[1]), "pickup_type": int(parts[2]), "x": float(parts[3]), "y": float(parts[4]), "z": float(parts[5])})
+        return out
+
+    def scan_objects(self) -> list[dict]:
+        """Objects streamed around the bot."""
+        (payload,) = self.command("scan_objects")
+        out = []
+        for entry in payload.split(";"):
+            if not entry:
+                continue
+            parts = entry.split(",")
+            out.append({"id": int(parts[0]), "model": int(parts[1]), "x": float(parts[2]), "y": float(parts[3]), "z": float(parts[4])})
+        return out
+
     def send_chat(self, client, text: str, timeout: float = 5.0) -> str:
         """Send a plain chat line via client stdin (no slash requirement)."""
         return client.send_message(text, timeout=timeout)

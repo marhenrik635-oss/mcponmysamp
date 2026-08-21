@@ -137,6 +137,24 @@ class DummyRemote:
     def wait_message(self, marker="", timeout=5.0):
         return "Selamat datang di server!"
 
+    def click_textdraw(self, textdraw_id):
+        pass
+
+    def pickup_pickup(self, pickup_id):
+        pass
+
+    def target_entity(self, obj=0, veh=0, player=0, actor=0):
+        pass
+
+    def scan_textlabels(self):
+        return [{"id": 1, "color": 0xFFFFFFFF, "x": 1.0, "y": 2.0, "z": 3.0, "text": "Info"}]
+
+    def scan_pickups(self):
+        return [{"id": 1, "model": 1240, "pickup_type": 2, "x": 1.0, "y": 2.0, "z": 3.0}]
+
+    def scan_objects(self):
+        return [{"id": 1, "model": 19341, "x": 1.0, "y": 2.0, "z": 3.0}]
+
     def wait_for_chat(self, client, marker, timeout=15.0):
         return ["line1", "line2"]
 
@@ -226,6 +244,21 @@ def test_bot_dialog_awareness_tools(app):
     assert _t(app, "bot_get_dialog")() == {"dialog": dlg}
     assert _t(app, "bot_wait_for_dialog")(3.0) == {"dialog": dlg}
     assert _t(app, "bot_wait_for_message")("Selamat", 3.0) == {"message": "Selamat datang di server!"}
+
+
+def test_bot_world_interaction_tools(app):
+    assert _t(app, "bot_click_textdraw")(1) == {"ok": True}
+    assert _t(app, "bot_pickup_pickup")(1) == {"ok": True}
+    assert _t(app, "bot_target_entity")(0, 2, 0, 0) == {"ok": True}
+
+
+def test_bot_world_scan_tools(app):
+    labels = [{"id": 1, "color": 0xFFFFFFFF, "x": 1.0, "y": 2.0, "z": 3.0, "text": "Info"}]
+    pickups = [{"id": 1, "model": 1240, "pickup_type": 2, "x": 1.0, "y": 2.0, "z": 3.0}]
+    objects = [{"id": 1, "model": 19341, "x": 1.0, "y": 2.0, "z": 3.0}]
+    assert _t(app, "bot_scan_textlabels")() == {"labels": labels}
+    assert _t(app, "bot_scan_pickups")() == {"pickups": pickups}
+    assert _t(app, "bot_scan_objects")() == {"objects": objects}
 
 
 def test_bot_ping_raises_when_bridge_down(tmp_path):
