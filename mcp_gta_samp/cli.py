@@ -6,6 +6,7 @@ from .config import ConfigError, load_config
 from .headless import HeadlessClient
 from .mcp_server import create_mcp_server
 from .openmp import OpenMpServer
+from .remote import RemoteControl
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,6 +23,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--client-executable", type=Path)
     parser.add_argument("--client-arg", action="append", default=[])
     parser.add_argument("--gamemode-source", type=Path)
+    parser.add_argument(
+        "--client-script-dir",
+        type=Path,
+        help="RakClient scripts dir (must contain remote_control.luau) to enable bot movement tools.",
+    )
     return parser
 
 
@@ -36,7 +42,13 @@ def main(argv: list[str] | None = None) -> int:
     client = None
     if args.client_executable:
         client = HeadlessClient(str(args.client_executable), args.client_arg)
-    app = create_mcp_server(server, client=client, gamemode_source=args.gamemode_source)
+    remote = RemoteControl() if args.client_executable and args.client_script_dir else None
+    app = create_mcp_server(
+        server,
+        client=client,
+        gamemode_source=args.gamemode_source,
+        remote=remote,
+    )
     try:
         app.run("stdio")
     finally:

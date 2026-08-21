@@ -67,6 +67,18 @@ class HeadlessClient:
             time.sleep(0.05)
         raise TimeoutError(f"no server response to {command}")
 
+    def send_message(self, text: str, timeout: float = 5.0) -> str:
+        """Send a plain chat line (no slash requirement). Returns when the line is
+        written to stdin (plain chat gets no server echo, so there is nothing to wait for)."""
+        if not self.running or not self._process or not self._process.stdin:
+            raise RuntimeError("headless client is not running")
+        text = text.strip()
+        if not text:
+            raise ValueError("empty message")
+        self._process.stdin.write(text + "\n")
+        self._process.stdin.flush()
+        return text
+
     def wait_until_spawned(self, timeout: float = 15.0) -> bool:
         return self._ready.wait(timeout)
 
