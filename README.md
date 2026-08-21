@@ -2,7 +2,7 @@
 
 AI-native testing bridge untuk server open.mp / SA-MP lokal.
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-stdio-7C3AED?style=for-the-badge) ![License](https://img.shields.io/badge/license-MIT-F59E0B?style=for-the-badge)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-stdio-7C3AED?style=for-the-badge) ![License](https://img.shields.io/badge/license-MIT-F59E0B?style=for-the-badge) [![M8ven Score](https://m8ven.ai/badge/mcp/marhenrik635-oss-mcponmysamp-f5v8cy)](https://m8ven.ai/mcp/marhenrik635-oss-mcponmysamp-f5v8cy)
 
 > Gunakan hanya untuk server lokal atau server yang kamu miliki / izinkan. Bukan tool public-server automation.
 
